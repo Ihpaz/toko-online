@@ -11,10 +11,29 @@ class UserController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         //
         $users = \App\User::paginate(10);
+
+        $filterKeyword = $request->get('keyword');
+        $status = $request->get('status');
+
+        if($status){
+           $users = \App\User::where('status', $status)->paginate(10);
+        } else {
+           $users = \App\User::paginate(10);
+        }      
+           
+        if($filterKeyword){
+            if($status){
+                $users = \App\User::where('email', 'LIKE', "%$filterKeyword%")->where('status', $status)->paginate(10);
+            } else {
+                $users = \App\User::where('email', 'LIKE', "%$filterKeyword%")->paginate(10);
+            }
+        }
+
+
 
         return view('users.index', ['users' => $users]);
     }
@@ -68,7 +87,8 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        //
+        $user = \App\User::findOrFail($id);
+        return view('users.show', ['user' => $user]);
     }
 
     /**
@@ -99,10 +119,12 @@ class UserController extends Controller
         $user->address = $request->get('address');
         $user->phone = $request->get('phone');
 
-        if($user->avatar && file_exists(storage_path('app/public/' . $user->avatar))){\Storage::delete('public/'.$user->avatar);
-            $file = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = $file;
+        if($user->avatar && file_exists(storage_path('app/public/' . $user->avatar))){
+            \Storage::delete('public/'.$user->avatar);
         }
+
+        $file = $request->file('avatar')->store('avatars', 'public');
+        $user->avatar = $file;
 
         $user->save();
         return redirect()->route('users.edit', [$id])->with('status', 'User
